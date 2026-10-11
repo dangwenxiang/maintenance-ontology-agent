@@ -1,6 +1,6 @@
 # 验证问题与验收标准
 
-以下均为待实现、待运行的检查项。
+以下为首版验证场景；自动化测试见 `src/test/java/dev/dangwenxiang/maintenance/BehaviorTest.java`。模型工具协议使用模拟模型测试，真实模型效果另需评估。
 
 | 问题 / 场景 | 预期 |
 |---|---|
