@@ -1,0 +1,5 @@
+case_id,device_id,phenomenon,confirmed_cause,action_summary,result,review_status,data_type
+C-DEMO-001,D-DEMO-01,扭矩不合格,演示原因：配置版本不匹配,演示摘要：按经确认资料核对配置,演示结果：恢复,approved,synthetic
+C-DEMO-002,D-DEMO-02,扭矩不合格,演示原因：工具部件磨损,演示摘要：依据维护规程处理部件,演示结果：恢复,approved,synthetic
+C-DEMO-003,D-DEMO-03,扭矩不合格,演示原因：型号B专用原因,演示摘要：型号B处理记录,演示结果：恢复,approved,synthetic
+C-DEMO-004,D-DEMO-01,扭矩不合格,待确认,待审核反馈,尚未确认,pending,synthetic

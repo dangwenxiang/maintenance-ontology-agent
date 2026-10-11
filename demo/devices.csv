@@ -1,0 +1,4 @@
+device_id,model,location,data_type
+D-DEMO-01,TIGHTEN-DEMO-A,演示区域A,synthetic
+D-DEMO-02,TIGHTEN-DEMO-A,演示区域B,synthetic
+D-DEMO-03,TIGHTEN-DEMO-B,演示区域C,synthetic
