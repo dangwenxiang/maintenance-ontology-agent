@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 import pathlib
+import re
 import secrets
 import shutil
 import socket
@@ -18,11 +19,22 @@ parser.add_argument('--runtime-port', type=int, default=int(os.environ.get('DSH_
 parser.add_argument('--build', action='store_true')
 args = parser.parse_args()
 env = os.environ.copy()
-if not env.get('JAVA_HOME') and sys.platform == 'darwin':
+def java_binary():
+    return str(pathlib.Path(env['JAVA_HOME']) / 'bin/java') if env.get('JAVA_HOME') else 'java'
+def java_major(binary):
+    try:
+        result = subprocess.run([binary, '-version'], capture_output=True, text=True)
+        match = re.search(r'version "(\d+)(?:\.(\d+))?', result.stderr + result.stdout)
+        return (int(match[2]) if match[1] == '1' else int(match[1])) if match else 0
+    except OSError:
+        return 0
+if java_major(java_binary()) < 21 and sys.platform == 'darwin':
     result = subprocess.run(['/usr/libexec/java_home', '-v', '21+'], capture_output=True, text=True)
     if result.returncode == 0:
         env['JAVA_HOME'] = result.stdout.strip()
-java = str(pathlib.Path(env['JAVA_HOME']) / 'bin/java') if env.get('JAVA_HOME') else 'java'
+java = java_binary()
+if java_major(java) < 21:
+    raise SystemExit('需要JDK >=21，请安装并设置JAVA_HOME。启动脚本不会修改系统Java配置。')
 node, npm, mvn = shutil.which('node'), shutil.which('npm'), shutil.which('mvn')
 if not node or not npm or not mvn:
     raise SystemExit('需要 Node.js >=22.19、npm、Maven 和 JDK >=21')
