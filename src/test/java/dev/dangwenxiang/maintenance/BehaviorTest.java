@@ -9,11 +9,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest(properties={"spring.datasource.url=jdbc:h2:mem:behavior;DB_CLOSE_DELAY=-1","agent.admin-token=test-only-token","agent.model-url=","agent.model-name="})
+@SpringBootTest(properties={"spring.datasource.url=jdbc:h2:mem:behavior;DB_CLOSE_DELAY=-1","agent.admin-token=test-only-token","agent.dsh-enabled=false","agent.dsh-tool-token=test-tool-token"})
 @AutoConfigureMockMvc
 @Transactional
 class BehaviorTest {
@@ -73,30 +72,16 @@ class BehaviorTest {
     @Test void emptyQuestionRejected() throws Exception{
         mvc.perform(post("/api/ask").contentType("application/json").content("{\"question\":\"\"}")).andExpect(status().isBadRequest());
     }
-    @Test void modelToolsAreExecutedAndCitationsMustBeObserved() throws Exception{
-        var model=mock(ModelGateway.class);when(model.configured()).thenReturn(true);
-        when(model.next(anyList())).thenReturn(mapper.readTree("{\"tool\":\"search_cases\"}"),mapper.readTree("{\"answer\":\"历史案例确认过配置版本不匹配，当前原因待核实。\",\"citations\":[\"C-DEMO-001\"]}"));
-        var a=new AgentService(store,model,mapper).ask("扭矩不合格", "D-DEMO-01");
-        assertEquals("model_tools",a.get("mode"));verify(model,times(2)).next(anyList());
-        assertTrue(a.get("trace").toString().contains("search_cases"));
+    @Test void runtimeToolGatewayChecksCredentialOwnerAndDeviceScope() throws Exception{
+        String request="{\"name\":\"search_cases\",\"question\":\"同型号扭矩不合格\",\"deviceId\":\"D-DEMO-01\",\"ownerId\":\"local-demo\"}";
+        mvc.perform(post("/internal/dsh/tools").contentType("application/json").content(request)).andExpect(status().isUnauthorized());
+        mvc.perform(post("/internal/dsh/tools").header("X-DSH-Tool-Token","test-tool-token").contentType("application/json").content(request)).andExpect(status().isOk());
+        mvc.perform(post("/internal/dsh/tools").header("X-DSH-Tool-Token","test-tool-token").contentType("application/json").content(request.replace("local-demo","someone-else"))).andExpect(status().isForbidden());
+        mvc.perform(post("/internal/dsh/tools").header("X-DSH-Tool-Token","test-tool-token").contentType("application/json").content(request.replace("同型号扭矩不合格","D-DEMO-03扭矩不合格"))).andExpect(status().isBadRequest());
     }
-    @Test void inventedCitationFallsBackToFacts() throws Exception{
-        var model=mock(ModelGateway.class);when(model.configured()).thenReturn(true);
-        when(model.next(anyList())).thenReturn(mapper.readTree("{\"answer\":\"假答案\",\"citations\":[\"MADE-UP\"]}"));
-        var a=new AgentService(store,model,mapper).ask("扭矩不合格", "D-DEMO-01");
-        assertEquals("evidence_fallback",a.get("mode"));assertFalse(a.get("answer").toString().contains("假答案"));
-    }
-    @Test void modelCannotExecuteWriteTool() throws Exception{
-        var model=mock(ModelGateway.class);when(model.configured()).thenReturn(true);
-        when(model.next(anyList())).thenReturn(mapper.readTree("{\"tool\":\"approve_case\"}"));
-        var a=new AgentService(store,model,mapper).ask("扭矩不合格", "D-DEMO-01");
-        assertEquals("evidence_fallback",a.get("mode"));
-        assertTrue(store.cases(null,null,true).stream().anyMatch(c->c.id().equals("C-DEMO-004")&&c.status().equals("pending")));
-    }
-    @Test void toolLoopHasFiniteLimit() throws Exception{
-        var model=mock(ModelGateway.class);when(model.configured()).thenReturn(true);
-        when(model.next(anyList())).thenReturn(mapper.readTree("{\"tool\":\"get_device\"}"));
-        var a=new AgentService(store,model,mapper).ask("扭矩不合格", "D-DEMO-01");
-        assertEquals("evidence_fallback",a.get("mode"));verify(model,times(4)).next(anyList());
+    @Test void pollingCannotOverwriteOriginalEvidence(){
+        var answer=service.ask("扭矩不合格","D-DEMO-01");String id=answer.get("id").toString();
+        answer.put("answer","被修改的结果");store.saveTrace(answer);
+        assertFalse(store.trace(id).get("answer").toString().contains("被修改"));
     }
 }

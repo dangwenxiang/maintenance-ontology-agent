@@ -5,7 +5,7 @@ COPY src src
 RUN mvn -B verify
 FROM eclipse-temurin:21-jre
 WORKDIR /app
-COPY --from=build /build/target/maintenance-ontology-agent-0.1.0.jar app.jar
+COPY --from=build /build/target/maintenance-ontology-agent-0.2.0.jar app.jar
 ENV BIND_ADDRESS=0.0.0.0
 EXPOSE 8087
 ENTRYPOINT ["java","-jar","app.jar"]

@@ -11,3 +11,13 @@ jobs:
           java-version: '21'
           cache: maven
       - run: mvn -B -s .mvn/settings.xml -gs .mvn/settings.xml verify
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: runtime/package-lock.json
+      - run: npm ci --ignore-scripts
+        working-directory: runtime
+      - run: npm test
+        working-directory: runtime
+      - run: python3 scripts/dsh_smoke.py

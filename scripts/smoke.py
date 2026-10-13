@@ -11,14 +11,14 @@ import urllib.error
 import urllib.request
 
 root = pathlib.Path(__file__).resolve().parents[1]
-jar = root / "target/maintenance-ontology-agent-0.1.0.jar"
+jar = root / "target/maintenance-ontology-agent-0.2.0.jar"
 java = str(pathlib.Path(os.environ["JAVA_HOME"]) / "bin/java") if os.environ.get("JAVA_HOME") else "java"
 with socket.socket() as sock:
     sock.bind(("127.0.0.1", 0))
     port = sock.getsockname()[1]
 token = secrets.token_hex(24)
 env = {**os.environ, "PORT": str(port), "BIND_ADDRESS": "127.0.0.1", "ADMIN_TOKEN": token,
-       "MODEL_BASE_URL": "", "MODEL_NAME": "", "MODEL_API_KEY": ""}
+       "DSH_ENABLED": "false", "MODEL_BASE_URL": "", "MODEL_NAME": "", "MODEL_API_KEY": ""}
 env.pop("DB_URL", None)
 env.pop("DB_PASSWORD", None)
 

@@ -71,7 +71,8 @@ public class Store {
         db.update("update knowledge_document set status='retired' where title=? and model=? and config_version=? and status='active'",title,model,config);
         String id="DOC-"+UUID.randomUUID();doc(id,title,version,model,config,section,content,"active");return id;
     }
-    public void saveTrace(Map<String,Object> response) {
+    public synchronized void saveTrace(Map<String,Object> response) {
+        if(db.queryForObject("select count(*) from question_trace where id=?",Integer.class,response.get("id"))>0)return;
         try { db.update("insert into question_trace values (?,?,?,?,?)",response.get("id"),response.get("question"),response.get("deviceId"),mapper.writeValueAsString(response),Instant.now().toString()); }
         catch(JsonProcessingException e){throw new IllegalStateException(e);}
     }

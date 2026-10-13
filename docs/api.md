@@ -1,15 +1,19 @@
-# v0.1 API
+# v0.2 API
 
 默认地址：http://127.0.0.1:8087 。JSON请求使用 `Content-Type: application/json`。
 
 | 方法 / 路径 | 作用 |
 |---|---|
-| GET /api/health | 服务状态、模型是否配置、审核是否启用 |
+| GET /api/health | Java状态、DSH启用/连接状态、演示或模型模式、审核是否启用 |
 | GET /api/devices | 设备档案 |
 | GET /api/cases?model=TIGHTEN-DEMO-A | 已审核维修案例 |
 | GET /api/documents | 资料列表，含有效/停用状态 |
 | GET /api/ontology | 首版概念与关系定义 |
 | POST /api/ask | 维修问答，返回依据和执行记录 |
+| POST /api/runs | 提交DSH异步任务，返回任务及会话ID |
+| GET /api/runs/{id}?cursor=N | 任务状态、指定游标之后的事件、完成后的问答结果 |
+| POST /api/runs/{id}/cancel | 等待DSH任务停止 |
+| GET /api/sessions | 已保存的本机演示会话 |
 | GET /api/traces/{id} | 历史问答的原始证据快照 |
 | POST /api/feedback | 提交反馈，返回待审核案例ID |
 | GET /api/review | 待审核案例，需要X-Admin-Token |
@@ -22,7 +26,13 @@
 {"question":"同型号设备出现扭矩不合格，历史上确认过哪些原因？","deviceId":"D-DEMO-01"}
 ```
 
-问题中的显式设备编号优先于页面选中的设备。未知编号不自动替换成其他设备。`mode`区分evidence、model_tools和evidence_fallback。无资料时status为insufficient_evidence。
+问题中的显式设备编号优先于页面选中的设备。未知编号不自动替换成其他设备。`mode`区分evidence、dsh_demo、dsh_model和dsh_evidence_fallback。无资料时问答status为insufficient_evidence。DSH任务status与业务问答status分别表示执行和依据情况。
+
+POST /api/runs接受同样请求，附加sessionId可在同一设备的原会话继续。切换设备应新建会话。完成后response包含原问答字段及kernel、dshVersion、sessionId。使用GET /api/runs获取完成结果时会保存原始业务证据，便于随后提交反馈。
+
+异步接口不自动处理执行失败；调用者需处理cancelled、failed和interrupted。POST /api/ask是同步兼容入口，等待DSH完成；直接启动Java而未启用DSH时仅返回确定性业务查询结果。
+
+内部工具网关POST /internal/dsh/tools只允许DSH服务调用，需要独立的X-DSH-Tool-Token，不应从浏览器使用。
 
 ## 维修反馈
 

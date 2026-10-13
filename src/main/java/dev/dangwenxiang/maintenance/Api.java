@@ -11,9 +11,9 @@ import java.util.*;
 @RestController
 @RequestMapping("/api")
 public class Api {
-    private final Store store;private final AgentService agent;private final ModelGateway gateway;private final String adminToken;
-    public Api(Store store,AgentService agent,ModelGateway gateway,@Value("${agent.admin-token}") String token){this.store=store;this.agent=agent;this.gateway=gateway;this.adminToken=token;}
-    @GetMapping("/health") public Object health(){return Map.of("status","ok","version","0.1.0","modelConfigured",gateway.configured(),"model",gateway.model(),"reviewEnabled",!adminToken.isBlank(),"dataType","synthetic");}
+    private final Store store;private final AgentService agent;private final DshClient dsh;private final String adminToken;
+    public Api(Store store,AgentService agent,DshClient dsh,@Value("${agent.admin-token}") String token){this.store=store;this.agent=agent;this.dsh=dsh;this.adminToken=token;}
+    @GetMapping("/health") public Object health(){return Map.of("status","ok","version","0.2.0","runtimeEnabled",dsh.enabled(),"runtime",dsh.health(),"reviewEnabled",!adminToken.isBlank(),"dataType","synthetic");}
     @GetMapping("/devices") public Object devices(){return store.devices();}
     @GetMapping("/cases") public Object cases(@RequestParam(required=false) String model){return store.cases(model,null,false);}
     @GetMapping("/documents") public Object documents(){return store.allDocuments();}
@@ -26,8 +26,12 @@ public class Api {
             Map.of("from","维修案例","relation","确认","to","故障原因"),Map.of("from","维修案例","relation","采用","to","维修动作"),
             Map.of("from","技术资料","relation","适用于","to","型号")),"note","这是首版领域关系定义，不是通用OWL推理引擎；历史确认原因不等于当前原因。");
     }
-    public record Ask(String question,String deviceId){}
-    @PostMapping("/ask") public Object ask(@RequestBody Ask request){return agent.ask(text(request.question(),"问题",1000),request.deviceId());}
+    public record Ask(String question,String deviceId,String sessionId){}
+    @PostMapping("/ask") public Object ask(@RequestBody Ask request){return agent.ask(text(request.question(),"问题",1000),request.deviceId(),request.sessionId());}
+    @PostMapping("/runs") public Object startRun(@RequestBody Ask request){return agent.startRun(text(request.question(),"问题",1000),request.deviceId(),request.sessionId());}
+    @GetMapping("/runs/{id}") public Object run(@PathVariable String id,@RequestParam(defaultValue="0") int cursor){if(cursor<0)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"游标无效");return agent.run(id,cursor);}
+    @PostMapping("/runs/{id}/cancel") public Object cancel(@PathVariable String id){return dsh.cancel(id);}
+    @GetMapping("/sessions") public Object sessions(){return dsh.sessions();}
     @GetMapping("/traces/{id}") public Object trace(@PathVariable String id){return store.trace(id);}
     public record Feedback(String traceId,String cause,String action,String result){}
     @PostMapping("/feedback") public Object feedback(@RequestBody Feedback f){return Map.of("caseId",store.feedback(text(f.traceId(),"问答记录",64),text(f.cause(),"实际原因",500),text(f.action(),"处理过程",1000),text(f.result(),"结果",500)),"status","pending");}
